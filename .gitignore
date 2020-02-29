@@ -114,3 +114,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# model folders
+/multilingual_model
+/chinese_only_model
+
+# VSCode settings
+/.vscode
