@@ -42,7 +42,7 @@ def process():
         with open(WRITE_PATH2, 'w') as write_f:
             content = read_f.readlines()
             for line in content:
-                write_f.write(line.strip() + '\n')
+                write_f.write(line.replace('　', ''))
 
 if __name__ == '__main__':
     process()
