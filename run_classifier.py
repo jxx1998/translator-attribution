@@ -94,6 +94,8 @@ flags.DEFINE_float(
 flags.DEFINE_integer("save_checkpoints_steps", 1000,
                      "How often to save the model checkpoint.")
 
+flags.DEFINE_integer("save_summary_steps", 10, "How often to save the model summary.")
+
 flags.DEFINE_integer("iterations_per_loop", 1000,
                      "How many steps to make in each estimator call.")
 
@@ -211,29 +213,33 @@ class ShakespeareProcessor(DataProcessor):
 
   def get_train_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.path(data_dir, "train.tsv"))
+    lines = self._read_tsv(os.path.join(data_dir, "train.tsv"))
     examples = []
     for (i, line) in enumerate(lines):
       if i == 0:
         continue
       guid = "train-%d" % (i)
       text_a = tokenization.convert_to_unicode(line[1])
-      label = tokenization.convert_to_unicode(line[0])
+      label = tokenization.convert_to_unicode(line[2])
       examples.append(InputExample(guid=guid, text_a=text_a, label=label))
     return examples
 
   def get_dev_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.path(data_dir, "dev.tsv"))
+    lines = self._read_tsv(os.path.join(data_dir, "test.tsv"))
     examples = []
     for (i, line) in enumerate(lines):
       if i == 0:
         continue
       guid = "dev-%d" % (i)
       text_a = tokenization.convert_to_unicode(line[1])
-      label = tokenization.convert_to_unicode(line[0])
+      label = tokenization.convert_to_unicode(line[2])
       examples.append(InputExample(guid=guid, text_a=text_a, label=label))
     return examples
+
+  def get_labels(self):
+    """See base class."""
+    return ['ZSH', 'SDY', 'BZL']
 
 
 class XnliProcessor(DataProcessor):
@@ -717,10 +723,16 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
         predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
         accuracy = tf.metrics.accuracy(
             labels=label_ids, predictions=predictions, weights=is_real_example)
+        recall = tf.metrics.recall(
+            labels=label_ids, predictions=predictions, weights=is_real_example)
+        precision = tf.metrics.precision(
+            labels=label_ids, predictions=predictions, weights=is_real_example)
         loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
         return {
             "eval_accuracy": accuracy,
             "eval_loss": loss,
+            "eval_recall": recall,
+            "eval_precision": precision,
         }
 
       eval_metrics = (metric_fn,
@@ -862,6 +874,7 @@ def main(_):
       cluster=tpu_cluster_resolver,
       master=FLAGS.master,
       model_dir=FLAGS.output_dir,
+      save_summary_steps=FLAGS.save_summary_steps,
       save_checkpoints_steps=FLAGS.save_checkpoints_steps,
       tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
@@ -905,12 +918,49 @@ def main(_):
     tf.logging.info("  Num examples = %d", len(train_examples))
     tf.logging.info("  Batch size = %d", FLAGS.train_batch_size)
     tf.logging.info("  Num steps = %d", num_train_steps)
+
+    # Train input function
     train_input_fn = file_based_input_fn_builder(
         input_file=train_file,
         seq_length=FLAGS.max_seq_length,
         is_training=True,
         drop_remainder=True)
-    estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
+    
+    # Prepare evaluation files and metrics
+    eval_examples = processor.get_dev_examples(FLAGS.data_dir)
+    num_actual_eval_examples = len(eval_examples)
+    if FLAGS.use_tpu:
+      # TPU requires a fixed batch size for all batches, therefore the number
+      # of examples must be a multiple of the batch size, or else examples
+      # will get dropped. So we pad with fake examples which are ignored
+      # later on. These do NOT count towards the metric (all tf.metrics
+      # support a per-instance weight, and these get a weight of 0.0).
+      while len(eval_examples) % FLAGS.eval_batch_size != 0:
+        eval_examples.append(PaddingInputExample())
+
+    eval_file = os.path.join(FLAGS.output_dir, "eval.tf_record")
+    file_based_convert_examples_to_features(
+        eval_examples, label_list, FLAGS.max_seq_length, tokenizer, eval_file)
+      
+    # This tells the estimator to run through the entire set.
+    eval_steps = None
+    # However, if running eval on the TPU, you will need to specify the
+    # number of steps.
+    if FLAGS.use_tpu:
+      assert len(eval_examples) % FLAGS.eval_batch_size == 0
+      eval_steps = int(len(eval_examples) // FLAGS.eval_batch_size)
+
+    eval_drop_remainder = True if FLAGS.use_tpu else False
+
+    eval_input_fn = file_based_input_fn_builder(
+        input_file=eval_file,
+        seq_length=FLAGS.max_seq_length,
+        is_training=False,
+        drop_remainder=eval_drop_remainder)
+    
+    train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=num_train_steps)
+    eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, steps=eval_steps)
+    tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
   if FLAGS.do_eval:
     eval_examples = processor.get_dev_examples(FLAGS.data_dir)
