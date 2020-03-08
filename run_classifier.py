@@ -83,7 +83,7 @@ flags.DEFINE_integer("predict_batch_size", 8, "Total batch size for predict.")
 
 flags.DEFINE_float("learning_rate", 5e-5, "The initial learning rate for Adam.")
 
-flags.DEFINE_float("num_train_epochs", 3.0,
+flags.DEFINE_float("num_train_epochs", 2.0,
                    "Total number of training epochs to perform.")
 
 flags.DEFINE_float(
@@ -213,41 +213,44 @@ class ShakespeareProcessor(DataProcessor):
 
   def get_train_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "train.tsv"))
+    lines = self._read_tsv(os.path.join(data_dir, "train_aligned.tsv"))
     examples = []
     for (i, line) in enumerate(lines):
       if i == 0:
         continue
       guid = "train-%d" % (i)
-      text_a = tokenization.convert_to_unicode(line[1])
-      label = tokenization.convert_to_unicode(line[2])
-      examples.append(InputExample(guid=guid, text_a=text_a, label=label))
+      text_a = tokenization.convert_to_unicode(line[2])
+      text_b = tokenization.convert_to_unicode(line[1])
+      label = tokenization.convert_to_unicode(line[3])
+      examples.append(InputExample(guid=guid, text_a=text_a, text_b = text_b, label=label))
     return examples
 
   def get_dev_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "test.tsv"))
+    lines = self._read_tsv(os.path.join(data_dir, "test_aligned.tsv"))
     examples = []
     for (i, line) in enumerate(lines):
       if i == 0:
         continue
       guid = "dev-%d" % (i)
-      text_a = tokenization.convert_to_unicode(line[1])
-      label = tokenization.convert_to_unicode(line[2])
-      examples.append(InputExample(guid=guid, text_a=text_a, label=label))
+      text_a = tokenization.convert_to_unicode(line[2])
+      text_b = tokenization.convert_to_unicode(line[1])
+      label = tokenization.convert_to_unicode(line[3])
+      examples.append(InputExample(guid=guid, text_a=text_a, text_b = text_b, label=label))
     return examples
 
   def get_test_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "test.tsv"))
+    lines = self._read_tsv(os.path.join(data_dir, "test_aligned.tsv"))
     examples = []
     for (i, line) in enumerate(lines):
       if i == 0:
         continue
-      guid = "dev-%d" % (i)
-      text_a = tokenization.convert_to_unicode(line[1])
-      label = tokenization.convert_to_unicode(line[2])
-      examples.append(InputExample(guid=guid, text_a=text_a, label=label))
+      guid = "test-%d" % (i)
+      text_a = tokenization.convert_to_unicode(line[2])
+      text_b = tokenization.convert_to_unicode(line[1])
+      label = tokenization.convert_to_unicode(line[3])
+      examples.append(InputExample(guid=guid, text_a=text_a, text_b = text_b, label=label))
     return examples
 
   def get_labels(self):
@@ -740,10 +743,8 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
             labels=label_ids, predictions=predictions, weights=is_real_example)
         precision = tf.metrics.precision(
             labels=label_ids, predictions=predictions, weights=is_real_example)
-        loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
         return {
             "eval_accuracy": accuracy,
-            "eval_loss": loss,
             "eval_recall": recall,
             "eval_precision": precision,
         }
