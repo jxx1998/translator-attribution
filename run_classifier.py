@@ -743,8 +743,10 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
             labels=label_ids, predictions=predictions, weights=is_real_example)
         precision = tf.metrics.precision(
             labels=label_ids, predictions=predictions, weights=is_real_example)
+        loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
         return {
             "eval_accuracy": accuracy,
+            "eval_loss": loss,
             "eval_recall": recall,
             "eval_precision": precision,
         }
