@@ -15,3 +15,5 @@ python run_classifier.py \
   --learning_rate=5e-5 \
   --num_train_epochs=100.0 \
   --output_dir=results/
+
+ssh -NfL localhost:16006:cs224n-gpu-strong:6006 jxx1998@23.96.25.215
