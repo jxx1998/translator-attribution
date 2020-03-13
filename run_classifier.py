@@ -887,15 +887,12 @@ def main(_):
         FLAGS.tpu_name, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
 
   is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
-  NUM_GPUS=2
-  strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=NUM_GPUS)
   run_config = tf.contrib.tpu.RunConfig(
       cluster=tpu_cluster_resolver,
       master=FLAGS.master,
       model_dir=FLAGS.output_dir,
       save_summary_steps=FLAGS.save_summary_steps,
       save_checkpoints_secs=FLAGS.save_checkpoints_secs,
-      train_distribute=strategy,
       tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
           num_shards=FLAGS.num_tpu_cores,
@@ -946,40 +943,6 @@ def main(_):
         is_training=True,
         drop_remainder=True)
     
-    # # Prepare evaluation files and metrics
-    # eval_examples = processor.get_dev_examples(FLAGS.data_dir)
-    # num_actual_eval_examples = len(eval_examples)
-    # if FLAGS.use_tpu:
-    #   # TPU requires a fixed batch size for all batches, therefore the number
-    #   # of examples must be a multiple of the batch size, or else examples
-    #   # will get dropped. So we pad with fake examples which are ignored
-    #   # later on. These do NOT count towards the metric (all tf.metrics
-    #   # support a per-instance weight, and these get a weight of 0.0).
-    #   while len(eval_examples) % FLAGS.eval_batch_size != 0:
-    #     eval_examples.append(PaddingInputExample())
-
-    # eval_file = os.path.join(FLAGS.output_dir, "eval.tf_record")
-    # file_based_convert_examples_to_features(
-    #     eval_examples, label_list, FLAGS.max_seq_length, tokenizer, eval_file)
-      
-    # # This tells the estimator to run through the entire set.
-    # eval_steps = None
-    # # However, if running eval on the TPU, you will need to specify the
-    # # number of steps.
-    # if FLAGS.use_tpu:
-    #   assert len(eval_examples) % FLAGS.eval_batch_size == 0
-    #   eval_steps = int(len(eval_examples) // FLAGS.eval_batch_size)
-
-    # eval_drop_remainder = True if FLAGS.use_tpu else False
-
-    # eval_input_fn = file_based_input_fn_builder(
-    #     input_file=eval_file,
-    #     seq_length=FLAGS.max_seq_length,
-    #     is_training=False,
-    #     drop_remainder=eval_drop_remainder)
-    
-    # train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=num_train_steps)
-    # eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, steps=eval_steps)
     estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
 
   if FLAGS.do_eval:
