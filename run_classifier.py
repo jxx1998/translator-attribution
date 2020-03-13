@@ -83,7 +83,7 @@ flags.DEFINE_integer("predict_batch_size", 8, "Total batch size for predict.")
 
 flags.DEFINE_float("learning_rate", 5e-5, "The initial learning rate for Adam.")
 
-flags.DEFINE_float("num_train_epochs", 2.0,
+flags.DEFINE_float("num_train_epochs", 3.0,
                    "Total number of training epochs to perform.")
 
 flags.DEFINE_float(
@@ -91,12 +91,12 @@ flags.DEFINE_float(
     "Proportion of training to perform linear learning rate warmup for. "
     "E.g., 0.1 = 10% of training.")
 
-flags.DEFINE_integer("save_checkpoints_secs", 3600,
+flags.DEFINE_integer("save_checkpoints_secs", 600,
                      "How often to save the model checkpoint.")
 
 flags.DEFINE_integer("save_summary_steps", 10, "How often to save the model summary.")
 
-flags.DEFINE_integer("iterations_per_loop", 50,
+flags.DEFINE_integer("iterations_per_loop", 1000,
                      "How many steps to make in each estimator call.")
 
 flags.DEFINE_bool("use_tpu", False, "Whether to use TPU or GPU/CPU.")
@@ -219,9 +219,9 @@ class ShakespeareProcessor(DataProcessor):
       if i == 0:
         continue
       guid = "train-%d" % (i)
-      text_a = tokenization.convert_to_unicode(line[2])
-      text_b = tokenization.convert_to_unicode(line[1])
-      label = tokenization.convert_to_unicode(line[3])
+      text_a = tokenization.convert_to_unicode(line[-2])
+      text_b = tokenization.convert_to_unicode(line[-3])
+      label = tokenization.convert_to_unicode(line[-1])
       examples.append(InputExample(guid=guid, text_a=text_a, text_b = text_b, label=label))
     return examples
 
@@ -233,9 +233,9 @@ class ShakespeareProcessor(DataProcessor):
       if i == 0:
         continue
       guid = "dev-%d" % (i)
-      text_a = tokenization.convert_to_unicode(line[2])
-      text_b = tokenization.convert_to_unicode(line[1])
-      label = tokenization.convert_to_unicode(line[3])
+      text_a = tokenization.convert_to_unicode(line[-2])
+      text_b = tokenization.convert_to_unicode(line[-3])
+      label = tokenization.convert_to_unicode(line[-1])
       examples.append(InputExample(guid=guid, text_a=text_a, text_b = text_b, label=label))
     return examples
 
@@ -247,9 +247,9 @@ class ShakespeareProcessor(DataProcessor):
       if i == 0:
         continue
       guid = "test-%d" % (i)
-      text_a = tokenization.convert_to_unicode(line[2])
-      text_b = tokenization.convert_to_unicode(line[1])
-      label = tokenization.convert_to_unicode(line[3])
+      text_a = tokenization.convert_to_unicode(line[-2])
+      text_b = tokenization.convert_to_unicode(line[-3])
+      label = tokenization.convert_to_unicode(line[-1])
       examples.append(InputExample(guid=guid, text_a=text_a, text_b = text_b, label=label))
     return examples
 
