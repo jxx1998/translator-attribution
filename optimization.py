@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import re
 import tensorflow as tf
+import horovod.tensorflow as hvd 
 
 
 def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, use_tpu):
@@ -57,12 +58,22 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, use_tpu):
   # is how the model was trained (note that the Adam m/v variables are NOT
   # loaded from init_checkpoint.)
   optimizer = AdamWeightDecayOptimizer(
-      learning_rate=learning_rate,
+      learning_rate=learning_rate * hvd.size(),
       weight_decay_rate=0.01,
       beta_1=0.9,
       beta_2=0.999,
       epsilon=1e-6,
       exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"])
+
+  optimizer = hvd.DistributedOptimizer(optimizer)
+
+  grads_and_vars=optimizer.compute_gradients(loss, tvars)
+
+  grads = [grad for grad,var in grads_and_vars]
+  tvars = [var for grad,var in grads_and_vars]
+  (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
+
+  train_op = optimizer.apply_gradients(zip(grads, tvars), global_step=global_step)
 
   if use_tpu:
     optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)

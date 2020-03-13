@@ -25,6 +25,7 @@ import modeling
 import optimization
 import tokenization
 import tensorflow as tf
+import horovod.tensorflow as hvd
 
 flags = tf.flags
 
@@ -841,6 +842,8 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
 
 
 def main(_):
+  hvd.init()
+  FLAGS.output_dir = FLAGS.output_dir if hvd.rank() == 0 else os.path.join(FLAGS.output_dir, str(hvd.rank()))
   tf.logging.set_verbosity(tf.logging.INFO)
 
   processors = {
@@ -887,6 +890,9 @@ def main(_):
         FLAGS.tpu_name, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
 
   is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
+  config = tf.ConfigProto()
+  config.gpu_options.visible_device_list = str(hvd.local_rank())
+
   run_config = tf.contrib.tpu.RunConfig(
       cluster=tpu_cluster_resolver,
       master=FLAGS.master,
@@ -896,16 +902,16 @@ def main(_):
       tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
           num_shards=FLAGS.num_tpu_cores,
-          per_host_input_for_training=is_per_host))
+          per_host_input_for_training=is_per_host),
+      session_config=config)
 
   train_examples = None
   num_train_steps = None
   num_warmup_steps = None
   if FLAGS.do_train:
     train_examples = processor.get_train_examples(FLAGS.data_dir)
-    num_train_steps = int(
-        len(train_examples) / FLAGS.train_batch_size * FLAGS.num_train_epochs)
-    num_warmup_steps = int(num_train_steps * FLAGS.warmup_proportion)
+    num_train_steps = num_train_steps // hvd.size()
+    num_warmup_steps = num_warmup_steps // hvd.size()
 
   model_fn = model_fn_builder(
       bert_config=bert_config,
@@ -942,8 +948,9 @@ def main(_):
         seq_length=FLAGS.max_seq_length,
         is_training=True,
         drop_remainder=True)
-    
-    estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
+
+    hooks = [hvd.BroadcastGlobalVariablesHook(0)]
+    estimator.train(input_fn=train_input_fn, max_steps=num_train_steps, hooks=hooks)
 
   if FLAGS.do_eval:
     eval_examples = processor.get_dev_examples(FLAGS.data_dir)

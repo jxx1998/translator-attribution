@@ -1,20 +1,26 @@
 export BERT_BASE_DIR=~/translator-attribution/multilingual_model
 export DATA_DIR=~/translator-attribution/data
 
-python run_classifier.py \
-  --task_name=SHAKESPEARE \
-  --do_train=true \
-  --do_eval=true \
-  --do_predict=false \
-  --data_dir=$DATA_DIR \
-  --vocab_file=$BERT_BASE_DIR/vocab.txt \
-  --bert_config_file=$BERT_BASE_DIR/bert_config.json \
-  --init_checkpoint=$BERT_BASE_DIR/bert_model.ckpt \
-  --max_seq_length=128 \
-  --train_batch_size=32 \
-  --learning_rate=5e-5 \
-  --num_train_epochs=20.0 \
-  --output_dir=results/
+mpirun -np 4 \
+  -H localhost:4 \
+  -bind-to none -map-by slot \
+  -x NCCL_DEBUG=INFO -x LD_LIBRARY_PATH -x PATH \
+  -mca pml ob1 -mca btl ^openib \
+  python run_classifier.py \
+    --task_name=SHAKESPEARE \
+    --do_train=true \
+    --do_eval=true \
+    --do_predict=false \
+    --data_dir=$DATA_DIR \
+    --vocab_file=$BERT_BASE_DIR/vocab.txt \
+    --bert_config_file=$BERT_BASE_DIR/bert_config.json \
+    --init_checkpoint=$BERT_BASE_DIR/bert_model.ckpt \
+    --max_seq_length=128 \
+    --train_batch_size=32 \
+    --learning_rate=5e-5 \
+    --num_train_epochs=20.0 \
+    --output_dir=results/
+
 
 export BERT_BASE_DIR=~/cs224n/translator-attribution/multilingual_model
 export DATA_DIR=~/cs224n/translator-attribution/data
