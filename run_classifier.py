@@ -887,12 +887,15 @@ def main(_):
         FLAGS.tpu_name, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
 
   is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
+  NUM_GPUS=2
+  strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=NUM_GPUS)
   run_config = tf.contrib.tpu.RunConfig(
       cluster=tpu_cluster_resolver,
       master=FLAGS.master,
       model_dir=FLAGS.output_dir,
       save_summary_steps=FLAGS.save_summary_steps,
       save_checkpoints_secs=FLAGS.save_checkpoints_secs,
+      train_distribute=strategy,
       tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
           num_shards=FLAGS.num_tpu_cores,
