@@ -1,4 +1,4 @@
-export BERT_BASE_DIR=~/translator-attribution/multilingual_model
+export BERT_BASE_DIR=~/translator-attribution/chinese_model
 export DATA_DIR=~/translator-attribution/data
 
 python run_classifier.py \
@@ -14,7 +14,7 @@ python run_classifier.py \
   --train_batch_size=32 \
   --learning_rate=5e-5 \
   --num_train_epochs=20.0 \
-  --output_dir=results/
+  --output_dir=chinese_results_20_5e-5/
 
 export BERT_BASE_DIR=~/cs224n/translator-attribution/multilingual_model
 export DATA_DIR=~/cs224n/translator-attribution/data
