@@ -222,7 +222,7 @@ class ShakespeareProcessor(DataProcessor):
       text_a = tokenization.convert_to_unicode(line[-2])
       text_b = tokenization.convert_to_unicode(line[-3])
       label = tokenization.convert_to_unicode(line[-1])
-      examples.append(InputExample(guid=guid, text_a=text_a, text_b = text_b, label=label))
+      examples.append(InputExample(guid=guid, text_a=text_a, label=label))
     return examples
 
   def get_dev_examples(self, data_dir):
@@ -236,7 +236,7 @@ class ShakespeareProcessor(DataProcessor):
       text_a = tokenization.convert_to_unicode(line[-2])
       text_b = tokenization.convert_to_unicode(line[-3])
       label = tokenization.convert_to_unicode(line[-1])
-      examples.append(InputExample(guid=guid, text_a=text_a, text_b = text_b, label=label))
+      examples.append(InputExample(guid=guid, text_a=text_a, label=label))
     return examples
 
   def get_test_examples(self, data_dir):
@@ -250,7 +250,7 @@ class ShakespeareProcessor(DataProcessor):
       text_a = tokenization.convert_to_unicode(line[-2])
       text_b = tokenization.convert_to_unicode(line[-3])
       label = tokenization.convert_to_unicode(line[-1])
-      examples.append(InputExample(guid=guid, text_a=text_a, text_b = text_b, label=label))
+      examples.append(InputExample(guid=guid, text_a=text_a, label=label))
     return examples
 
   def get_labels(self):
